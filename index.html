@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentence Arrangement Game</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:linear-gradient(135deg,#eef7ff,#f8f5ff);
+  color:#172033;
+}
+.container{max-width:900px;margin:0 auto;padding:20px 14px 40px}
+h1{text-align:center;color:#1769aa;margin:8px 0 6px;font-size:28px}
+.subtitle{text-align:center;color:#64748b;margin:0 0 18px}
+.scorebox{
+  background:#fff;border:1px solid #dbe3ef;border-radius:18px;
+  padding:15px 18px;margin-bottom:18px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;flex-wrap:wrap;box-shadow:0 5px 18px rgba(30,64,175,.08)
+}
+.score{font-size:20px;font-weight:800;color:#1769aa}
+.small{font-size:13px;color:#64748b;margin-top:3px}
+.question{
+  background:#fff;border:1px solid #dbe3ef;border-radius:18px;
+  padding:17px;margin-bottom:16px;
+  box-shadow:0 4px 14px rgba(15,23,42,.06)
+}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.qnum{font-size:19px;font-weight:800;color:#1769aa}
+.instruction{color:#64748b;font-size:14px;margin:8px 0 12px}
+.answer{
+  min-height:62px;border:2px dashed #b8c5d6;border-radius:14px;
+  padding:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  background:#f8fafc;margin-bottom:12px
+}
+.placeholder{color:#94a3b8;font-size:14px}
+.bank{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
+.word{
+  border:1px solid #cbd5e1;background:#fff;color:#172033;
+  border-radius:11px;padding:10px 13px;min-height:44px;
+  font-size:16px;cursor:pointer;touch-action:manipulation;
+  transition:.15s
+}
+.word:hover{background:#eff6ff;border-color:#60a5fa;transform:translateY(-1px)}
+.answer .word{background:#e8f2ff;border-color:#60a5fa}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:0;border-radius:11px;padding:10px 16px;min-height:44px;
+  font-weight:700;cursor:pointer;font-size:14px
+}
+.check{background:#1769aa;color:white}
+.reset{background:#e2e8f0;color:#334155}
+.feedback{
+  display:none;margin-top:12px;padding:11px 13px;border-radius:12px;
+  font-size:14px;line-height:1.5
+}
+.feedback.show{display:block}
+.feedback.correct{background:#dcfce7;color:#166534}
+.feedback.wrong{background:#fee2e2;color:#991b1b}
+.status{font-size:14px;font-weight:700}
+.correctStatus{color:#15803d}.wrongStatus{color:#dc2626}
+@media(max-width:520px){
+  .container{padding:14px 10px 30px}
+  h1{font-size:24px}
+  .question{padding:14px}
+  .word{font-size:15px;padding:9px 11px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Sentence Arrangement Game</h1>
+  <p class="subtitle">Click the words to arrange each sentence. Keep the original capital letters and punctuation.</p>
+
+  <div class="scorebox">
+    <div>
+      <div class="score">Score: <span id="score">0</span> / 15</div>
+      <div class="small">Each question is checked separately.</div>
+    </div>
+    <button class="btn reset" id="resetAll" type="button">Reset All</button>
+  </div>
+
+  <div id="questions"></div>
+</div>
+
+<script>
+const data = [
+  {answer:["Are","you","and","your","brother","playing","beach","volleyball","next","week?"]},
+  {answer:["Mr","Pike","has","short","black","hair,","a","round","face","and","blue","eyes."]},
+  {answer:["Tom","has","black","curly","hair","and","brown","eyes."]},
+  {answer:["She","likes","drawing","pictures","and","writing","stories."]},
+  {answer:["Mai","and","Mi","are","talking","about","their","best","friends."]},
+  {answer:["His","sister","has","thin","lips","and","small","white","teeth."]},
+  {answer:["Linda","is","taking","part","in","a","cooking","competition","this","Sunday."]},
+  {answer:["There","are","two","arms","and","ten","fingers","in","the","body."]},
+  {answer:["He","is","swimming","at","the","moment."]},
+  {answer:["Many","pupils","like","going","to","the","Summer","Camp."]},
+  {answer:["My","friend","is","an","active","boy."]},
+  {answer:["He","is","very","kind","and","honest","with","his","friends."]},
+  {answer:["She","shares","her","lunch","with","me","today."]},
+  {answer:["Would","you","like","to","come","to","my","party?"]},
+  {answer:["Owen","is","sporty","and","plays","football","well."]}
+];
+
+const states = data.map(() => ({chosen:[], correct:false, checked:false}));
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function updateScore(){
+  document.getElementById("score").textContent =
+    states.filter(s=>s.correct).length;
+}
+
+function renderQuestion(i){
+  const item=data[i], state=states[i];
+  const section=document.createElement("section");
+  section.className="question";
+
+  section.innerHTML=`
+    <div class="qtop">
+      <div class="qnum">${i+1}.</div>
+      <div class="status" aria-live="polite"></div>
+    </div>
+    <div class="instruction">Arrange the words to make a complete sentence.</div>
+    <div class="answer"></div>
+    <div class="bank"></div>
+    <div class="actions">
+      <button type="button" class="btn check">Check Answer</button>
+      <button type="button" class="btn reset">Reset</button>
+    </div>
+    <div class="feedback" aria-live="polite"></div>
+  `;
+
+  const answerBox=section.querySelector(".answer");
+  const bank=section.querySelector(".bank");
+  const status=section.querySelector(".status");
+  const feedback=section.querySelector(".feedback");
+
+  function draw(){
+    answerBox.innerHTML="";
+    bank.innerHTML="";
+
+    if(state.chosen.length===0){
+      const p=document.createElement("span");
+      p.className="placeholder";
+      p.textContent="Click the words below to build the sentence.";
+      answerBox.appendChild(p);
+    }
+
+    state.chosen.forEach((word,index)=>{
+      const b=document.createElement("button");
+      b.type="button";
+      b.className="word";
+      b.textContent=word;
+      b.title="Remove this word";
+      b.addEventListener("click",()=>{
+        state.chosen.splice(index,1);
+        state.checked=false;
+        state.correct=false;
+        clearFeedback();
+        draw();
+        updateScore();
+      });
+      answerBox.appendChild(b);
+    });
+
+    const remaining=[...item.answer];
+    state.chosen.forEach(word=>{
+      const idx=remaining.indexOf(word);
+      if(idx!==-1) remaining.splice(idx,1);
+    });
+
+    shuffle(remaining).forEach(word=>{
+      const b=document.createElement("button");
+      b.type="button";
+      b.className="word";
+      b.textContent=word;
+      b.addEventListener("click",()=>{
+        state.chosen.push(word);
+        state.checked=false;
+        state.correct=false;
+        clearFeedback();
+        draw();
+        updateScore();
+      });
+      bank.appendChild(b);
+    });
+  }
+
+  function clearFeedback(){
+    status.textContent="";
+    status.className="status";
+    feedback.className="feedback";
+    feedback.innerHTML="";
+  }
+
+  section.querySelector(".check").addEventListener("click",()=>{
+    const correct=state.chosen.join(" ")===item.answer.join(" ");
+    state.checked=true;
+    state.correct=correct;
+
+    if(correct){
+      status.textContent="✓ Correct";
+      status.className="status correctStatus";
+      feedback.className="feedback show correct";
+      feedback.innerHTML="Excellent! Your sentence is correct.";
+    }else{
+      status.textContent="✗ Incorrect";
+      status.className="status wrongStatus";
+      feedback.className="feedback show wrong";
+      feedback.innerHTML=
+        "Not quite. Please rearrange the words and try again.<br><strong>Correct answer:</strong> "+
+        item.answer.join(" ");
+    }
+    updateScore();
+  });
+
+  section.querySelector(".reset").addEventListener("click",()=>{
+    state.chosen=[];
+    state.correct=false;
+    state.checked=false;
+    clearFeedback();
+    draw();
+    updateScore();
+  });
+
+  draw();
+  return section;
+}
+
+function build(){
+  const root=document.getElementById("questions");
+  root.innerHTML="";
+  data.forEach((_,i)=>root.appendChild(renderQuestion(i)));
+  updateScore();
+}
+
+document.getElementById("resetAll").addEventListener("click",()=>{
+  states.forEach(s=>{
+    s.chosen=[];
+    s.correct=false;
+    s.checked=false;
+  });
+  build();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+build();
+</script>
+</body>
+</html>
